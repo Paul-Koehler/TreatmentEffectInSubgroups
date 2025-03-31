@@ -15,11 +15,11 @@ from econml.iv.nnet import DeepIV
 from sklearn.model_selection import train_test_split
 from sklearn.neural_network import MLPRegressor, MLPClassifier
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier, AdaBoostRegressor
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression, ElasticNet
 from sklearn.metrics import mean_squared_error
 from sklearn.naive_bayes import BernoulliNB, MultinomialNB
-from sklearn.preprocessing import PolynomialFeatures, LabelEncoder, StandardScaler
-from sklearn.model_selection import GridSearchCV
+from sklearn.preprocessing import PolynomialFeatures, LabelEncoder, StandardScaler, MinMaxScaler
+from sklearn.model_selection import GridSearchCV, KFold
 from sklift.metrics import metrics
 import shap
 
@@ -28,10 +28,26 @@ from econml.dml import CausalForestDML, LinearDML, NonParamDML, DML, SparseLinea
 
 import matplotlib.pyplot as plt
 
+def plot_gini_curve(element_loss):
+    element_loss = np.sort(element_loss)
+    n = len(element_loss)
+
+    lorenz_curve = np.cumsum(element_loss) / np.sum(element_loss)
+    lorenz_curve = np.insert(lorenz_curve, 0, 0)
+
+    plt.figure(figsize=(8, 6))
+    plt.plot(np.linspace(0, 1, n + 1), lorenz_curve, label='Lorenz Curve')
+    plt.plot([0, 1], [0, 1], label='Line of Equality', linestyle='--')
+    plt.xlabel('Proportion of Samples')
+    plt.ylabel('Proportion of Loss')
+    plt.title('Gini Curve')
+    plt.legend()
+    plt.grid()
+    plt.show()
+
 
 def train_and_interpret(model, Y_train, T_train, X_data_train, W_train):
     model.fit(Y_train, T_train, X=X_data_train, W=W_train)
-    print("Done")
 
     intrp = SingleTreeCateInterpreter(include_model_uncertainty=True, max_depth=3, min_samples_leaf=10)
     intrp.interpret(model, X_data_train)
@@ -121,7 +137,6 @@ Y_col = "DFS"
 
 
 def load_data():
-    global data, X_data, label_encoder, X_data_train, X_data_test, Y_train, Y_test, T_train, T_test, W_train, W_test
     data = pd.read_csv("data/individualPatients.csv")
     X_data, Y, T, W = prepare_data(data, Y_col, "Adj", ["Age", "Sex", "Smoking_history", "Clinical_stage", "N_stage"],
                                    ["PatientID", "OS", "DFS", "OS_status", "DFS_status"])
@@ -165,6 +180,7 @@ if __name__ == "__main__":
     train_and_interpret(model, Y_train, T_train, X_data_train, W_train)
     test_model(model, Y_test, T_test, X_data_test, W_test)
     print("Finished Model1")
+
     model2 = LinearDML(model_y=lgb.LGBMRegressor(), model_t=lgb.LGBMClassifier(), discrete_treatment=True, random_state=RANDOM_STATE, cv=CV_value)
     train_and_interpret(model2, Y_train, T_train, X_data_train, W_train)
     test_model(model2, Y_test, T_test, X_data_test, W_test)
@@ -180,6 +196,7 @@ if __name__ == "__main__":
     test_model(model4, Y_test, T_test, X_data_test, W_test)
     print("Finished Model4")
 
+    #High loss
     model5 = NonParamDML(model_y=RandomForestRegressor(), model_t=RandomForestClassifier(), model_final=AdaBoostRegressor(), discrete_treatment=True, random_state=RANDOM_STATE, cv=CV_value)
     model5.fit(Y_train, T_train, X=X_data_train, W=W_train)
     print(model5.score(Y_test, T_test, X=X_data_test, W=W_test))
@@ -198,6 +215,9 @@ if __name__ == "__main__":
     model8 = DMLOrthoForest(model_T=BernoulliNB(), model_Y=AdaBoostRegressor(), model_T_final=AdaBoostRegressor(), model_Y_final=AdaBoostRegressor(), random_state=RANDOM_STATE)
     train_and_interpret(model8, Y_train, T_train, X_data_train, W_train)
 
+    model9 = DML(model_t=BernoulliNB(), model_y=AdaBoostRegressor(), model_final=ElasticNet(), random_state=RANDOM_STATE, discrete_treatment=True)
+    model9.fit(Y_train, T_train, X=X_data_train, W=W_train)
+    test_model(model9, Y_test, T_test, X_data_test, W_test)
     # List of columns to analyze
     columns_to_analyze = ['EGFR_subtype', 'NKX2_1_Gain', 'CDKN2A_Loss', 'PIK3CA', 'TERT_Gain', 'CDK4_Gain', 'STK11_Loss', 'RB1', 'None']
 
@@ -207,6 +227,9 @@ if __name__ == "__main__":
     build_biomarker_effects(model4, columns_to_analyze)
     build_biomarker_effects(model5, columns_to_analyze)
     build_biomarker_effects(model6, columns_to_analyze)
+    build_biomarker_effects(model7, columns_to_analyze)
+    build_biomarker_effects(model8, columns_to_analyze)
+    build_biomarker_effects(model9, columns_to_analyze)
 
     build_biomarker_effects_with_intervals(model, columns_to_analyze)
     build_biomarker_effects_with_intervals(model2, columns_to_analyze)
@@ -214,6 +237,8 @@ if __name__ == "__main__":
     build_biomarker_effects_with_intervals(model4, columns_to_analyze)
     # No model5 because no interval
     build_biomarker_effects_with_intervals(model6, columns_to_analyze)
+    build_biomarker_effects_with_intervals(model7, columns_to_analyze)
+    build_biomarker_effects_with_intervals(model8, columns_to_analyze)
 
     show_shap_plot(model, X_data)
     show_shap_plot(model2, X_data)
@@ -221,21 +246,7 @@ if __name__ == "__main__":
     show_shap_plot(model4, X_data)
     show_shap_plot(model5, X_data)
     show_shap_plot(model6, X_data)
+    show_shap_plot(model7, X_data)
+    #show_shap_plot(model8, X_data) takes too long, different explainer
+    show_shap_plot(model9, X_data)
 
-# TODO Try qini curve for evaluation of the models
-def plot_gini_curve(element_loss):
-    element_loss = np.sort(element_loss)
-    n = len(element_loss)
-
-    lorenz_curve = np.cumsum(element_loss) / np.sum(element_loss)
-    lorenz_curve = np.insert(lorenz_curve, 0, 0)
-
-    plt.figure(figsize=(8, 6))
-    plt.plot(np.linspace(0, 1, n + 1), lorenz_curve, label='Lorenz Curve')
-    plt.plot([0, 1], [0, 1], label='Line of Equality', linestyle='--')
-    plt.xlabel('Proportion of Samples')
-    plt.ylabel('Proportion of Loss')
-    plt.title('Gini Curve')
-    plt.legend()
-    plt.grid()
-    plt.show()
