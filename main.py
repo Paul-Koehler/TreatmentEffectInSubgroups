@@ -141,6 +141,7 @@ def load_data():
     X_data, Y, T, W = prepare_data(data, Y_col, "Adj", ["Age", "Sex", "Smoking_history", "Clinical_stage", "N_stage"],
                                    ["PatientID", "OS", "DFS", "OS_status", "DFS_status"])
     Y = Y.values
+    global label_encoder
     label_encoder = LabelEncoder()
     T = label_encoder.fit_transform(T)
     X_data_train, X_data_test = X_data, X_data
@@ -216,8 +217,6 @@ if __name__ == "__main__":
     build_biomarker_effects(model3, columns_to_analyze)
     build_biomarker_effects(model4, columns_to_analyze)
     build_biomarker_effects(model5, columns_to_analyze)
-    build_biomarker_effects(model6, columns_to_analyze)
-    build_biomarker_effects(model7, columns_to_analyze)
     build_biomarker_effects(model8, columns_to_analyze)
     build_biomarker_effects(model9, columns_to_analyze)
 
@@ -226,8 +225,6 @@ if __name__ == "__main__":
     build_biomarker_effects_with_intervals(model3, columns_to_analyze)
     build_biomarker_effects_with_intervals(model4, columns_to_analyze)
     # No model5 because no interval
-    build_biomarker_effects_with_intervals(model6, columns_to_analyze)
-    build_biomarker_effects_with_intervals(model7, columns_to_analyze)
     build_biomarker_effects_with_intervals(model8, columns_to_analyze)
 
     show_shap_plot(model, X_data)
@@ -235,8 +232,6 @@ if __name__ == "__main__":
     show_shap_plot(model3, X_data)
     show_shap_plot(model4, X_data)
     show_shap_plot(model5, X_data)
-    show_shap_plot(model6, X_data)
-    show_shap_plot(model7, X_data)
     #show_shap_plot(model8, X_data) takes too long, different explainer
     show_shap_plot(model9, X_data)
 
