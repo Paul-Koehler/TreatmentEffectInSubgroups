@@ -28,6 +28,8 @@ from econml.dml import CausalForestDML, LinearDML, NonParamDML, DML, SparseLinea
 
 import matplotlib.pyplot as plt
 
+print("Importing complete")
+
 def plot_gini_curve(element_loss):
     element_loss = np.sort(element_loss)
     n = len(element_loss)
@@ -129,7 +131,17 @@ def prepare_data(data, y_col, t_col, w_cols, drop_cols):
         W = None
     return X_data, Y, T, W
 
-print("Imports successful")
+def show_overview_data(data):
+    print(data.describe())
+    print(data.head(5))
+    corr_matrix = data.drop(columns=["Adj"]).corr()
+    plt.figure(figsize=(10, 8))
+    plt.imshow(corr_matrix, cmap='RdYlGn', interpolation='nearest')
+    plt.colorbar()
+    plt.xticks(range(len(corr_matrix.columns)), corr_matrix.columns, rotation=90)
+    plt.yticks(range(len(corr_matrix.columns)), corr_matrix.columns)
+    plt.title('Correlation Matrix')
+    plt.show()
 
 RANDOM_STATE = 15
 CV_value= 6
@@ -161,21 +173,13 @@ def load_data():
 
 data, X_data, Y, T, W, X_data_train, X_data_test, Y_train, Y_test, T_train, T_test, W_train, W_test = load_data()
 
+
+
 if __name__ == "__main__":
-    print(data.describe())
-    print(data.head(5))
-    corr_matrix = data.drop(columns=["Adj"]).corr()
-
-    plt.figure(figsize=(10, 8))
-    plt.imshow(corr_matrix, cmap='RdYlGn', interpolation='nearest')
-    plt.colorbar()
-    plt.xticks(range(len(corr_matrix.columns)), corr_matrix.columns, rotation=90)
-    plt.yticks(range(len(corr_matrix.columns)), corr_matrix.columns)
-    plt.title('Correlation Matrix')
-    plt.show()
-
+    show_overview_data(data)
 
     columns_to_analyze = ['EGFR_subtype', 'NKX2_1_Gain', 'CDKN2A_Loss', 'PIK3CA', 'TERT_Gain', 'CDK4_Gain', 'STK11_Loss', 'RB1', 'None']
+
     model = CausalForestDML(model_y=lgb.LGBMRegressor(), model_t=lgb.LGBMClassifier(), discrete_treatment=True, random_state=RANDOM_STATE, cv=CV_value)
     train_and_interpret(model, Y_train, T_train, X_data_train, W_train)
     test_model(model, Y_test, T_test, X_data_test, W_test)
@@ -222,12 +226,14 @@ if __name__ == "__main__":
     build_biomarker_effects(model8, columns_to_analyze)
     build_biomarker_effects_with_intervals(model8, columns_to_analyze)
     #show_shap_plot(model8, X_data) takes too long, different explainer
+    print("Finished Model8")
 
     model9 = DML(model_t=BernoulliNB(), model_y=AdaBoostRegressor(), model_final=ElasticNet(), random_state=RANDOM_STATE, discrete_treatment=True)
     model9.fit(Y_train, T_train, X=X_data_train, W=W_train)
     test_model(model9, Y_test, T_test, X_data_test, W_test)
     build_biomarker_effects(model9, columns_to_analyze)
     show_shap_plot(model9, X_data)
+    print("Finished Model9")
 
 
 
