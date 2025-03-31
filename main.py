@@ -202,16 +202,6 @@ if __name__ == "__main__":
     print(model5.score(Y_test, T_test, X=X_data_test, W=W_test))
     print("Finished Model5")
 
-    model6 = SparseLinearDML(model_y=AdaBoostRegressor(), model_t=BernoulliNB(), discrete_treatment=True, random_state=RANDOM_STATE, cv=CV_value)
-    model6.fit(Y_train, T_train, X=X_data_train, W=W_train)
-    test_model(model6, Y_test, T_test, X_data_test, W_test)
-    print("Finished Model6")
-
-    model7 = ForestDRLearner(cv=CV_value, random_state=RANDOM_STATE)
-    train_and_interpret(model7, Y_train, T_train, X_data_train, W_train)
-    test_model(model7, Y_test, T_test, X_data_test, W_test)
-    print("Finished Model7")
-
     model8 = DMLOrthoForest(model_T=BernoulliNB(), model_Y=AdaBoostRegressor(), model_T_final=AdaBoostRegressor(), model_Y_final=AdaBoostRegressor(), random_state=RANDOM_STATE)
     train_and_interpret(model8, Y_train, T_train, X_data_train, W_train)
 
