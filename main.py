@@ -175,63 +175,59 @@ if __name__ == "__main__":
     plt.show()
 
 
-    # Fit Causal Forest
-    # TODO Implement CV to find the best parameters
+    columns_to_analyze = ['EGFR_subtype', 'NKX2_1_Gain', 'CDKN2A_Loss', 'PIK3CA', 'TERT_Gain', 'CDK4_Gain', 'STK11_Loss', 'RB1', 'None']
     model = CausalForestDML(model_y=lgb.LGBMRegressor(), model_t=lgb.LGBMClassifier(), discrete_treatment=True, random_state=RANDOM_STATE, cv=CV_value)
     train_and_interpret(model, Y_train, T_train, X_data_train, W_train)
     test_model(model, Y_test, T_test, X_data_test, W_test)
+    build_biomarker_effects(model, columns_to_analyze)
+    build_biomarker_effects_with_intervals(model, columns_to_analyze)
+    show_shap_plot(model, X_data)
     print("Finished Model1")
 
     model2 = LinearDML(model_y=lgb.LGBMRegressor(), model_t=lgb.LGBMClassifier(), discrete_treatment=True, random_state=RANDOM_STATE, cv=CV_value)
     train_and_interpret(model2, Y_train, T_train, X_data_train, W_train)
     test_model(model2, Y_test, T_test, X_data_test, W_test)
+    build_biomarker_effects(model2, columns_to_analyze)
+    build_biomarker_effects_with_intervals(model2, columns_to_analyze)
+    show_shap_plot(model2, X_data)
     print("Finished Model2")
 
     model3 = LinearDML(model_y="automl", model_t="automl", discrete_treatment=True, random_state=RANDOM_STATE, cv=CV_value)
     train_and_interpret(model3, Y_train, T_train, X_data_train, W_train)
     test_model(model3, Y_test, T_test, X_data_test, W_test)
+    build_biomarker_effects(model3, columns_to_analyze)
+    build_biomarker_effects_with_intervals(model3, columns_to_analyze)
+    show_shap_plot(model3, X_data)
     print("Finished Model3")
 
     model4 = CausalForestDML(model_y=MLPRegressor(), model_t=MLPClassifier(), discrete_treatment=True, random_state=RANDOM_STATE, cv=CV_value)
     train_and_interpret(model4, Y_train, T_train, X_data_train, W_train)
     test_model(model4, Y_test, T_test, X_data_test, W_test)
+    build_biomarker_effects(model4, columns_to_analyze)
+    build_biomarker_effects_with_intervals(model4, columns_to_analyze)
+    show_shap_plot(model4, X_data)
     print("Finished Model4")
 
     #High loss
     model5 = NonParamDML(model_y=RandomForestRegressor(), model_t=RandomForestClassifier(), model_final=AdaBoostRegressor(), discrete_treatment=True, random_state=RANDOM_STATE, cv=CV_value)
     model5.fit(Y_train, T_train, X=X_data_train, W=W_train)
     print(model5.score(Y_test, T_test, X=X_data_test, W=W_test))
+    build_biomarker_effects(model5, columns_to_analyze)
+    show_shap_plot(model5, X_data)
+    # No model5 because no interval
     print("Finished Model5")
 
     model8 = DMLOrthoForest(model_T=BernoulliNB(), model_Y=AdaBoostRegressor(), model_T_final=AdaBoostRegressor(), model_Y_final=AdaBoostRegressor(), random_state=RANDOM_STATE)
     train_and_interpret(model8, Y_train, T_train, X_data_train, W_train)
+    build_biomarker_effects(model8, columns_to_analyze)
+    build_biomarker_effects_with_intervals(model8, columns_to_analyze)
+    #show_shap_plot(model8, X_data) takes too long, different explainer
 
     model9 = DML(model_t=BernoulliNB(), model_y=AdaBoostRegressor(), model_final=ElasticNet(), random_state=RANDOM_STATE, discrete_treatment=True)
     model9.fit(Y_train, T_train, X=X_data_train, W=W_train)
     test_model(model9, Y_test, T_test, X_data_test, W_test)
-    # List of columns to analyze
-    columns_to_analyze = ['EGFR_subtype', 'NKX2_1_Gain', 'CDKN2A_Loss', 'PIK3CA', 'TERT_Gain', 'CDK4_Gain', 'STK11_Loss', 'RB1', 'None']
-
-    build_biomarker_effects(model, columns_to_analyze)
-    build_biomarker_effects(model2, columns_to_analyze)
-    build_biomarker_effects(model3, columns_to_analyze)
-    build_biomarker_effects(model4, columns_to_analyze)
-    build_biomarker_effects(model5, columns_to_analyze)
-    build_biomarker_effects(model8, columns_to_analyze)
     build_biomarker_effects(model9, columns_to_analyze)
-
-    build_biomarker_effects_with_intervals(model, columns_to_analyze)
-    build_biomarker_effects_with_intervals(model2, columns_to_analyze)
-    build_biomarker_effects_with_intervals(model3, columns_to_analyze)
-    build_biomarker_effects_with_intervals(model4, columns_to_analyze)
-    # No model5 because no interval
-    build_biomarker_effects_with_intervals(model8, columns_to_analyze)
-
-    show_shap_plot(model, X_data)
-    show_shap_plot(model2, X_data)
-    show_shap_plot(model3, X_data)
-    show_shap_plot(model4, X_data)
-    show_shap_plot(model5, X_data)
-    #show_shap_plot(model8, X_data) takes too long, different explainer
     show_shap_plot(model9, X_data)
+
+
 
