@@ -156,10 +156,10 @@ def total_model_evaluation_and_training(model_class, model_params, X_data_train,
 
     return model
 
-def try_k_fold():
+def try_k_fold(data):
     global Y_train, T_train, W_train, Y_test, T_test, W_test
     k_fold = KFold(random_state=RANDOM_STATE, n_splits=CV_value, shuffle=True)
-    split_generator = k_fold.split(data)
+    split_generator = k_fold.split(data) # inlining this caused AccessViolation
     for data_train_idxs, data_test_idxs in split_generator:
         data_iter = data.copy()
         X_train, Y_train, T_train, W_train = prepare_data(data_iter.iloc[data_train_idxs], Y_col, "Adj",
@@ -209,14 +209,11 @@ Y_col = "DFS"
 
 
 if __name__ == "__main__":
-    try_k_fold()
-
+    columns_to_analyze = ['EGFR_subtype', 'NKX2_1_Gain', 'CDKN2A_Loss', 'PIK3CA', 'TERT_Gain', 'CDK4_Gain', 'STK11_Loss', 'RB1', 'None']
     data, X_data, Y, T, W, X_data_train, X_data_test, Y_train, Y_test, T_train, T_test, W_train, W_test, label_encoder = load_data()
     show_overview_data(data)
-
-    columns_to_analyze = ['EGFR_subtype', 'NKX2_1_Gain', 'CDKN2A_Loss', 'PIK3CA', 'TERT_Gain', 'CDK4_Gain', 'STK11_Loss', 'RB1', 'None']
-
-
+    try_k_fold(data)
+    data, X_data, Y, T, W, X_data_train, X_data_test, Y_train, Y_test, T_train, T_test, W_train, W_test, label_encoder = load_data()
 
     total_model_evaluation_and_training(
         CausalForestDML, {"model_y": lgb.LGBMRegressor(), "model_t": lgb.LGBMClassifier(), "discrete_treatment": True, "random_state": RANDOM_STATE, "cv": CV_value, "verbose": 1},
