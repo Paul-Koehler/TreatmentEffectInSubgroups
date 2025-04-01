@@ -143,9 +143,24 @@ def show_overview_data(data):
     plt.title('Correlation Matrix')
     plt.show()
 
-RANDOM_STATE = 15
-CV_value= 6
-Y_col = "DFS"
+def total_model_evaluation_and_training(model_class, model_params, X_data_train, Y_train, T_train, W_train, X_data_test, Y_test, T_test, W_test, interval_available=False, tree_explainer_available=False, shap_available=False, score_available=False):
+    model = model_class(**model_params)
+    print(f"{model.__class__.__name__} evaluating")
+    print(f"with params: {model_params['model_y'].__class__.__name__} and {model_params['model_t'].__class__.__name__}")
+
+    if tree_explainer_available:
+        train_and_interpret(model, Y_train, T_train, X_data_train, W_train)
+    else:
+        model.fit(Y_train, T_train, X=X_data_train, W=W_train)
+        print(f"Model with {model.__class__.__name__} scored {model.score(Y_test, T_test, X=X_data_test, W=W_test)}")
+    if interval_available:
+        build_biomarker_effects_with_intervals(model, columns_to_analyze)
+    else:
+        build_biomarker_effects(model, columns_to_analyze)
+    if shap_available:
+        show_shap_plot(model, X_data)
+
+    return model
 
 
 def load_data():
@@ -171,6 +186,10 @@ def load_data():
     data["Adj_encoded"] = T
     return data, X_data, Y, T, W, X_data_train, X_data_test, Y_train, Y_test, T_train, T_test, W_train, W_test
 
+RANDOM_STATE = 15
+CV_value= 6
+Y_col = "DFS"
+
 data, X_data, Y, T, W, X_data_train, X_data_test, Y_train, Y_test, T_train, T_test, W_train, W_test = load_data()
 
 
@@ -179,60 +198,46 @@ if __name__ == "__main__":
     show_overview_data(data)
 
     columns_to_analyze = ['EGFR_subtype', 'NKX2_1_Gain', 'CDKN2A_Loss', 'PIK3CA', 'TERT_Gain', 'CDK4_Gain', 'STK11_Loss', 'RB1', 'None']
-
-    model = CausalForestDML(model_y=lgb.LGBMRegressor(), model_t=lgb.LGBMClassifier(), discrete_treatment=True, random_state=RANDOM_STATE, cv=CV_value)
-    train_and_interpret(model, Y_train, T_train, X_data_train, W_train)
-    test_model(model, Y_test, T_test, X_data_test, W_test)
-    build_biomarker_effects(model, columns_to_analyze)
-    build_biomarker_effects_with_intervals(model, columns_to_analyze)
-    show_shap_plot(model, X_data)
+    total_model_evaluation_and_training(
+        CausalForestDML, {"model_y": lgb.LGBMRegressor(), "model_t": lgb.LGBMClassifier(), "discrete_treatment": True, "random_state": RANDOM_STATE, "cv": CV_value, "verbose": 1},
+        X_data_train, Y_train, T_train, W_train, X_data_test, Y_test, T_test, W_test,
+        interval_available=True, tree_explainer_available=True, shap_available=True, score_available=True)
     print("Finished Model1")
 
-    model2 = LinearDML(model_y=lgb.LGBMRegressor(), model_t=lgb.LGBMClassifier(), discrete_treatment=True, random_state=RANDOM_STATE, cv=CV_value)
-    train_and_interpret(model2, Y_train, T_train, X_data_train, W_train)
-    test_model(model2, Y_test, T_test, X_data_test, W_test)
-    build_biomarker_effects(model2, columns_to_analyze)
-    build_biomarker_effects_with_intervals(model2, columns_to_analyze)
-    show_shap_plot(model2, X_data)
+    total_model_evaluation_and_training(
+        LinearDML, {"model_y": lgb.LGBMRegressor(), "model_t": lgb.LGBMClassifier(), "discrete_treatment": True, "random_state": RANDOM_STATE, "cv": CV_value},
+        X_data_train, Y_train, T_train, W_train, X_data_test, Y_test, T_test, W_test,
+        interval_available=True, tree_explainer_available=True, shap_available=True, score_available=True)
     print("Finished Model2")
 
-    model3 = LinearDML(model_y="automl", model_t="automl", discrete_treatment=True, random_state=RANDOM_STATE, cv=CV_value)
-    train_and_interpret(model3, Y_train, T_train, X_data_train, W_train)
-    test_model(model3, Y_test, T_test, X_data_test, W_test)
-    build_biomarker_effects(model3, columns_to_analyze)
-    build_biomarker_effects_with_intervals(model3, columns_to_analyze)
-    show_shap_plot(model3, X_data)
+    total_model_evaluation_and_training(
+        LinearDML, {"model_y": "automl", "model_t": "automl", "discrete_treatment": True, "random_state": RANDOM_STATE, "cv": CV_value},
+        X_data_train, Y_train, T_train, W_train, X_data_test, Y_test, T_test, W_test,
+        interval_available=True, tree_explainer_available=True, shap_available=True, score_available=True)
     print("Finished Model3")
 
-    model4 = CausalForestDML(model_y=MLPRegressor(), model_t=MLPClassifier(), discrete_treatment=True, random_state=RANDOM_STATE, cv=CV_value)
-    train_and_interpret(model4, Y_train, T_train, X_data_train, W_train)
-    test_model(model4, Y_test, T_test, X_data_test, W_test)
-    build_biomarker_effects(model4, columns_to_analyze)
-    build_biomarker_effects_with_intervals(model4, columns_to_analyze)
-    show_shap_plot(model4, X_data)
+    total_model_evaluation_and_training(
+        CausalForestDML, {"model_y": MLPRegressor(), "model_t": MLPClassifier(), "discrete_treatment": True, "random_state": RANDOM_STATE, "cv": CV_value},
+        X_data_train, Y_train, T_train, W_train, X_data_test, Y_test, T_test, W_test,
+        interval_available=True, tree_explainer_available=True, shap_available=True, score_available=True)
     print("Finished Model4")
 
     #High loss
-    model5 = NonParamDML(model_y=RandomForestRegressor(), model_t=RandomForestClassifier(), model_final=AdaBoostRegressor(), discrete_treatment=True, random_state=RANDOM_STATE, cv=CV_value)
-    model5.fit(Y_train, T_train, X=X_data_train, W=W_train)
-    print(model5.score(Y_test, T_test, X=X_data_test, W=W_test))
-    build_biomarker_effects(model5, columns_to_analyze)
-    show_shap_plot(model5, X_data)
     # No model5 because no interval
+    total_model_evaluation_and_training(NonParamDML, {"model_y": RandomForestRegressor(), "model_t": RandomForestClassifier(), "model_final": AdaBoostRegressor(), "discrete_treatment": True, "random_state": RANDOM_STATE, "cv": CV_value}, X_data_train, Y_train, T_train, W_train, X_data_test, Y_test, T_test, W_test, interval_available=False, tree_explainer_available=False, shap_available=True, score_available=True)
     print("Finished Model5")
 
-    model8 = DMLOrthoForest(model_T=BernoulliNB(), model_Y=AdaBoostRegressor(), model_T_final=AdaBoostRegressor(), model_Y_final=AdaBoostRegressor(), random_state=RANDOM_STATE)
-    train_and_interpret(model8, Y_train, T_train, X_data_train, W_train)
-    build_biomarker_effects(model8, columns_to_analyze)
-    build_biomarker_effects_with_intervals(model8, columns_to_analyze)
-    #show_shap_plot(model8, X_data) takes too long, different explainer
+    #show_shap_plot(model8, X_data) takes too long, different explainer+
+    total_model_evaluation_and_training(
+        DMLOrthoForest, {"model_T": BernoulliNB(), "model_Y": AdaBoostRegressor(), "model_T_final": AdaBoostRegressor(), "model_Y_final": AdaBoostRegressor(), "random_state": RANDOM_STATE},
+        X_data_train, Y_train, T_train, W_train, X_data_test, Y_test, T_test, W_test,
+        interval_available=True, tree_explainer_available=True, shap_available=False, score_available=False)
     print("Finished Model8")
 
-    model9 = DML(model_t=BernoulliNB(), model_y=AdaBoostRegressor(), model_final=ElasticNet(), random_state=RANDOM_STATE, discrete_treatment=True)
-    model9.fit(Y_train, T_train, X=X_data_train, W=W_train)
-    test_model(model9, Y_test, T_test, X_data_test, W_test)
-    build_biomarker_effects(model9, columns_to_analyze)
-    show_shap_plot(model9, X_data)
+    total_model_evaluation_and_training(
+        DML, {"model_t": BernoulliNB(), "model_y": AdaBoostRegressor(), "model_final": ElasticNet(), "random_state": RANDOM_STATE, "discrete_treatment": True},
+                                        X_data_train, Y_train, T_train, W_train, X_data_test, Y_test, T_test, W_test,
+                                        interval_available=False, tree_explainer_available=False, shap_available=True, score_available=True)
     print("Finished Model9")
 
 
