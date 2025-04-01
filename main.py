@@ -48,11 +48,11 @@ def plot_gini_curve(element_loss):
     plt.show()
 
 
-def train_and_interpret(model, Y_train, T_train, X_data_train, W_train):
-    model.fit(Y_train, T_train, X=X_data_train, W=W_train)
+def train_and_interpret(model, Y_train, T_train, X_train, W_train):
+    model.fit(Y_train, T_train, X=X_train, W=W_train)
 
     intrp = SingleTreeCateInterpreter(include_model_uncertainty=True, max_depth=3, min_samples_leaf=10)
-    intrp.interpret(model, X_data_train)
+    intrp.interpret(model, X_train)
     plt.figure(figsize=(12, 8), dpi=400)
     intrp.plot(feature_names=X_data.columns)
     plt.title(model.__class__.__name__)
@@ -162,7 +162,6 @@ def total_model_evaluation_and_training(model_class, model_params, X_data_train,
 
     return model
 
-
 def load_data():
     data = pd.read_csv("data/individualPatients.csv")
     X_data, Y, T, W = prepare_data(data, Y_col, "Adj", ["Age", "Sex", "Smoking_history", "Clinical_stage", "N_stage"],
@@ -183,7 +182,6 @@ def load_data():
         X_data_train, X_data_test, Y_train, Y_test, T_train, T_test = train_test_split(X_data, Y, T, test_size=0.2,
                                                                                        random_state=RANDOM_STATE)
         W_train, W_test = None, None
-    data["Adj_encoded"] = T
     return data, X_data, Y, T, W, X_data_train, X_data_test, Y_train, Y_test, T_train, T_test, W_train, W_test
 
 RANDOM_STATE = 15
@@ -198,6 +196,20 @@ if __name__ == "__main__":
     show_overview_data(data)
 
     columns_to_analyze = ['EGFR_subtype', 'NKX2_1_Gain', 'CDKN2A_Loss', 'PIK3CA', 'TERT_Gain', 'CDK4_Gain', 'STK11_Loss', 'RB1', 'None']
+
+    k_fold = KFold(random_state=RANDOM_STATE, n_splits=CV_value, shuffle=True)
+    for i, (data_train_idxs, data_test_idxs) in enumerate(k_fold.split(data)):
+        X_train, Y_train, T_train, W_train = prepare_data(data.iloc[data_train_idxs], Y_col, "Adj", ["Age", "Sex", "Smoking_history", "Clinical_stage", "N_stage"],
+                     ["PatientID", "OS", "DFS", "OS_status", "DFS_status"])
+        X_test, Y_test, T_test, W_test = prepare_data(data.iloc[data_test_idxs], Y_col, "Adj", ["Age", "Sex", "Smoking_history", "Clinical_stage", "N_stage"],
+                                                      ["PatientID", "OS", "DFS", "OS_status", "DFS_status"])
+        T_test = label_encoder.transform(T_test)
+        T_train = label_encoder.transform(T_train)
+        total_model_evaluation_and_training(
+            CausalForestDML, {"model_y": lgb.LGBMRegressor(), "model_t": lgb.LGBMClassifier(), "discrete_treatment": True, "random_state": RANDOM_STATE, "cv": CV_value, "verbose": 1},
+                                            X_train, Y_train, T_train, W_train, X_test, Y_test, T_test, W_test,
+                                            interval_available=True, tree_explainer_available=True, shap_available=True, score_available=True)
+    exit()
     total_model_evaluation_and_training(
         CausalForestDML, {"model_y": lgb.LGBMRegressor(), "model_t": lgb.LGBMClassifier(), "discrete_treatment": True, "random_state": RANDOM_STATE, "cv": CV_value, "verbose": 1},
         X_data_train, Y_train, T_train, W_train, X_data_test, Y_test, T_test, W_test,
