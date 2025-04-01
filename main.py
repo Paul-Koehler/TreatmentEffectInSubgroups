@@ -209,7 +209,6 @@ if __name__ == "__main__":
             CausalForestDML, {"model_y": lgb.LGBMRegressor(), "model_t": lgb.LGBMClassifier(), "discrete_treatment": True, "random_state": RANDOM_STATE, "cv": CV_value, "verbose": 1},
                                             X_train, Y_train, T_train, W_train, X_test, Y_test, T_test, W_test,
                                             interval_available=True, tree_explainer_available=True, shap_available=True, score_available=True)
-    exit()
     total_model_evaluation_and_training(
         CausalForestDML, {"model_y": lgb.LGBMRegressor(), "model_t": lgb.LGBMClassifier(), "discrete_treatment": True, "random_state": RANDOM_STATE, "cv": CV_value, "verbose": 1},
         X_data_train, Y_train, T_train, W_train, X_data_test, Y_test, T_test, W_test,
