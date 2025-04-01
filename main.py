@@ -1,32 +1,26 @@
-import numpy as np
-import pandas as pd
-
 # Generic ML imports
-import lightgbm as lgb
-import sklearn.preprocessing
-from econml.grf import CausalForest, RegressionForest
-from econml.dr import ForestDRLearner
-from econml.orf import  DMLOrthoForest
-from econml._cate_estimator import BaseCateEstimator
-from econml.cate_interpreter import SingleTreeCateInterpreter
-from econml.inference._inference import InferenceResults
-from econml.validate import BLPEvaluationResults, EvaluationResults, DRTester
-from econml.iv.nnet import DeepIV
-from sklearn.model_selection import train_test_split
-from sklearn.neural_network import MLPRegressor, MLPClassifier
-from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier, AdaBoostRegressor
-from sklearn.linear_model import LinearRegression, ElasticNet
-from sklearn.metrics import mean_squared_error
-from sklearn.naive_bayes import BernoulliNB, MultinomialNB
-from sklearn.preprocessing import PolynomialFeatures, LabelEncoder, StandardScaler, MinMaxScaler
-from sklearn.model_selection import GridSearchCV, KFold
-from sklift.metrics import metrics
-import shap
-
-# EconML imports
-from econml.dml import CausalForestDML, LinearDML, NonParamDML, DML, SparseLinearDML
+from typing import List
+import gc
 
 import matplotlib.pyplot as plt
+import lightgbm as lgb
+import numpy as np
+import pandas as pd
+import shap
+from econml._cate_estimator import BaseCateEstimator
+from econml.cate_interpreter import SingleTreeCateInterpreter
+# EconML imports
+from econml.dml import CausalForestDML, LinearDML, NonParamDML, DML
+from econml.inference._inference import InferenceResults
+from econml.orf import DMLOrthoForest
+from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier, AdaBoostRegressor
+from sklearn.linear_model import ElasticNet
+from sklearn.model_selection import KFold
+from sklearn.model_selection import train_test_split
+from sklearn.naive_bayes import BernoulliNB
+from sklearn.neural_network import MLPRegressor, MLPClassifier
+from sklearn.preprocessing import LabelEncoder
+from numpy.typing import NDArray
 
 print("Importing complete")
 
@@ -182,33 +176,45 @@ def load_data():
         X_data_train, X_data_test, Y_train, Y_test, T_train, T_test = train_test_split(X_data, Y, T, test_size=0.2,
                                                                                        random_state=RANDOM_STATE)
         W_train, W_test = None, None
-    return data, X_data, Y, T, W, X_data_train, X_data_test, Y_train, Y_test, T_train, T_test, W_train, W_test
+    return data, X_data, Y, T, W, X_data_train, X_data_test, Y_train, Y_test, T_train, T_test, W_train, W_test, label_encoder
 
 RANDOM_STATE = 15
-CV_value= 6
+CV_value= 3
 Y_col = "DFS"
 
-data, X_data, Y, T, W, X_data_train, X_data_test, Y_train, Y_test, T_train, T_test, W_train, W_test = load_data()
-
-
-
 if __name__ == "__main__":
+    data, X_data, Y, T, W, X_data_train, X_data_test, Y_train, Y_test, T_train, T_test, W_train, W_test, label_encoder = load_data()
     show_overview_data(data)
 
     columns_to_analyze = ['EGFR_subtype', 'NKX2_1_Gain', 'CDKN2A_Loss', 'PIK3CA', 'TERT_Gain', 'CDK4_Gain', 'STK11_Loss', 'RB1', 'None']
 
+    explainers = []
     k_fold = KFold(random_state=RANDOM_STATE, n_splits=CV_value, shuffle=True)
-    for i, (data_train_idxs, data_test_idxs) in enumerate(k_fold.split(data)):
+
+    for data_train_idxs, data_test_idxs in k_fold.split(data):
         X_train, Y_train, T_train, W_train = prepare_data(data.iloc[data_train_idxs], Y_col, "Adj", ["Age", "Sex", "Smoking_history", "Clinical_stage", "N_stage"],
                      ["PatientID", "OS", "DFS", "OS_status", "DFS_status"])
         X_test, Y_test, T_test, W_test = prepare_data(data.iloc[data_test_idxs], Y_col, "Adj", ["Age", "Sex", "Smoking_history", "Clinical_stage", "N_stage"],
                                                       ["PatientID", "OS", "DFS", "OS_status", "DFS_status"])
         T_test = label_encoder.transform(T_test)
         T_train = label_encoder.transform(T_train)
-        total_model_evaluation_and_training(
-            CausalForestDML, {"model_y": lgb.LGBMRegressor(), "model_t": lgb.LGBMClassifier(), "discrete_treatment": True, "random_state": RANDOM_STATE, "cv": CV_value, "verbose": 1},
+        model1 = total_model_evaluation_and_training(
+            CausalForestDML, {"model_y": MLPRegressor(), "model_t": MLPClassifier(), "discrete_treatment": True, "random_state": RANDOM_STATE, "cv": CV_value, "verbose": 5},
                                             X_train, Y_train, T_train, W_train, X_test, Y_test, T_test, W_test,
                                             interval_available=True, tree_explainer_available=True, shap_available=True, score_available=True)
+        values = model1.shap_values(X_test, feature_names=X_data.columns, treatment_names=["gefitinib"], output_names=[Y_col])
+        explainers.append(values["DFS"]["gefitinib"])
+    print("Finished Model1")
+    print("show final shap plot")
+    explanations = [x.mean(axis=0) for x in explainers]
+    explanation = explanations[0]
+    for i in range(1, len(explainers)):
+        explanation.hstack(explanations[i])
+    ax = shap.plots.beeswarm(explanation, show=False)
+    plt.title(f"{Y_col} with {model1.__class__.__name__}")
+    plt.tight_layout()
+    plt.show()
+
     total_model_evaluation_and_training(
         CausalForestDML, {"model_y": lgb.LGBMRegressor(), "model_t": lgb.LGBMClassifier(), "discrete_treatment": True, "random_state": RANDOM_STATE, "cv": CV_value, "verbose": 1},
         X_data_train, Y_train, T_train, W_train, X_data_test, Y_test, T_test, W_test,
