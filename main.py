@@ -156,6 +156,30 @@ def total_model_evaluation_and_training(model_class, model_params, X_data_train,
 
     return model
 
+def try_k_fold():
+    global Y_train, T_train, W_train, Y_test, T_test, W_test
+    k_fold = KFold(random_state=RANDOM_STATE, n_splits=CV_value, shuffle=True)
+    split_generator = k_fold.split(data)
+    for data_train_idxs, data_test_idxs in split_generator:
+        data_iter = data.copy()
+        X_train, Y_train, T_train, W_train = prepare_data(data_iter.iloc[data_train_idxs], Y_col, "Adj",
+                                                          ["Age", "Sex", "Smoking_history", "Clinical_stage",
+                                                           "N_stage"],
+                                                          ["PatientID", "OS", "DFS", "OS_status", "DFS_status"])
+        X_test, Y_test, T_test, W_test = prepare_data(data_iter.iloc[data_test_idxs], Y_col, "Adj",
+                                                      ["Age", "Sex", "Smoking_history", "Clinical_stage", "N_stage"],
+                                                      ["PatientID", "OS", "DFS", "OS_status", "DFS_status"])
+
+        T_test = label_encoder.transform(T_test)
+        T_train = label_encoder.transform(T_train)
+
+        model1 = total_model_evaluation_and_training(
+            CausalForestDML, {"model_y": MLPRegressor(), "model_t": MLPClassifier(), "discrete_treatment": True,
+                              "random_state": RANDOM_STATE, "cv": CV_value, "verbose": 5},
+            X_train, Y_train, T_train, W_train, X_test, Y_test, T_test, W_test,
+            interval_available=True, tree_explainer_available=True, shap_available=True, score_available=True)
+    print("Finished Model1 with CV")
+
 def load_data():
     data = pd.read_csv("data/individualPatients.csv")
     X_data, Y, T, W = prepare_data(data, Y_col, "Adj", ["Age", "Sex", "Smoking_history", "Clinical_stage", "N_stage"],
@@ -179,41 +203,20 @@ def load_data():
     return data, X_data, Y, T, W, X_data_train, X_data_test, Y_train, Y_test, T_train, T_test, W_train, W_test, label_encoder
 
 RANDOM_STATE = 15
-CV_value= 3
+CV_value= 6
 Y_col = "DFS"
 
+
+
 if __name__ == "__main__":
+    try_k_fold()
+
     data, X_data, Y, T, W, X_data_train, X_data_test, Y_train, Y_test, T_train, T_test, W_train, W_test, label_encoder = load_data()
     show_overview_data(data)
 
     columns_to_analyze = ['EGFR_subtype', 'NKX2_1_Gain', 'CDKN2A_Loss', 'PIK3CA', 'TERT_Gain', 'CDK4_Gain', 'STK11_Loss', 'RB1', 'None']
 
-    explainers = []
-    k_fold = KFold(random_state=RANDOM_STATE, n_splits=CV_value, shuffle=True)
 
-    for data_train_idxs, data_test_idxs in k_fold.split(data):
-        X_train, Y_train, T_train, W_train = prepare_data(data.iloc[data_train_idxs], Y_col, "Adj", ["Age", "Sex", "Smoking_history", "Clinical_stage", "N_stage"],
-                     ["PatientID", "OS", "DFS", "OS_status", "DFS_status"])
-        X_test, Y_test, T_test, W_test = prepare_data(data.iloc[data_test_idxs], Y_col, "Adj", ["Age", "Sex", "Smoking_history", "Clinical_stage", "N_stage"],
-                                                      ["PatientID", "OS", "DFS", "OS_status", "DFS_status"])
-        T_test = label_encoder.transform(T_test)
-        T_train = label_encoder.transform(T_train)
-        model1 = total_model_evaluation_and_training(
-            CausalForestDML, {"model_y": MLPRegressor(), "model_t": MLPClassifier(), "discrete_treatment": True, "random_state": RANDOM_STATE, "cv": CV_value, "verbose": 5},
-                                            X_train, Y_train, T_train, W_train, X_test, Y_test, T_test, W_test,
-                                            interval_available=True, tree_explainer_available=True, shap_available=True, score_available=True)
-        values = model1.shap_values(X_test, feature_names=X_data.columns, treatment_names=["gefitinib"], output_names=[Y_col])
-        explainers.append(values["DFS"]["gefitinib"])
-    print("Finished Model1")
-    print("show final shap plot")
-    explanations = [x.mean(axis=0) for x in explainers]
-    explanation = explanations[0]
-    for i in range(1, len(explainers)):
-        explanation.hstack(explanations[i])
-    ax = shap.plots.beeswarm(explanation, show=False)
-    plt.title(f"{Y_col} with {model1.__class__.__name__}")
-    plt.tight_layout()
-    plt.show()
 
     total_model_evaluation_and_training(
         CausalForestDML, {"model_y": lgb.LGBMRegressor(), "model_t": lgb.LGBMClassifier(), "discrete_treatment": True, "random_state": RANDOM_STATE, "cv": CV_value, "verbose": 1},
