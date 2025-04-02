@@ -91,9 +91,9 @@ def train_and_interpret(model, y_train, t_train, x_train, w_train, *, feature_na
     plt.title(model.__class__.__name__)
     plt.show()
 
-def show_shap_plot(model, x_data, Y_col_name):
-    shap_values = model.shap_values(x_data[:], feature_names=x_data.columns, treatment_names=["gefitinib"], output_names=[Y_col_name])
-    ax = shap.plots.beeswarm(shap_values[Y_col_name]["gefitinib"], show=False)
-    plt.title(f"{Y_col_name} with {model.__class__.__name__}")
+def show_shap_plot(model, x_data, y_col):
+    shap_values = model.shap_values(x_data[:], feature_names=x_data.columns, treatment_names=["gefitinib"], output_names=[y_col])
+    ax = shap.plots.beeswarm(shap_values[y_col]["gefitinib"], show=False)
+    plt.title(f"{y_col} with {model.__class__.__name__}")
     plt.tight_layout()
     plt.show()
