@@ -20,8 +20,8 @@ from sklearn.neural_network import MLPRegressor, MLPClassifier
 from sklearn.preprocessing import LabelEncoder
 from numpy.typing import NDArray
 
-def test_model(model, Y_test, T_test, X_data_test, W_test):
-    print(model.score(Y_test, T_test, X=X_data_test, W=W_test))
+def test_model(model, y_test, t_test, x_test, w_test):
+    print(model.score(y_test, t_test, X=x_test, W=w_test))
 
 def build_biomarker_effects(model, t_encoder, x_test, columns_to_analyze):
     effects = []
@@ -47,8 +47,8 @@ def build_biomarker_effects(model, t_encoder, x_test, columns_to_analyze):
     plt.grid(True, axis='x')
     plt.show()
 
-def train_encoder_for_treatment(encoder, T_train):
-    encoder.fit(T_train)
+def train_encoder_for_treatment(encoder, t_train):
+    encoder.fit(t_train)
     return encoder
 
 def build_biomarker_effects_with_intervals(model: BaseCateEstimator, t_encoder, x_test, columns_to_analyze):

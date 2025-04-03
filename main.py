@@ -61,13 +61,13 @@ def prepare_data(data, y_col, t_col, w_cols, drop_cols):
         w = None
     return x_data, y, t, w
 
-def total_model_evaluation_and_training(model_class, model_params, x_train, y_train, t_train, w_train, x_test, y_test, t_test, w_test, t_encoder, interval_available=False, tree_explainer_available=False, shap_available=False, score_available=False):
+def total_model_evaluation_and_training(model_class, model_params, x_train, y_train, t_train, w_train, x_test, y_test, t_test, w_test, t_encoder, feature_names, interval_available=False, tree_explainer_available=False, shap_available=False, score_available=False):
     model = model_class(**model_params)
     print(f"{model.__class__.__name__} evaluating")
     print(f"with params: {model_params['model_y'].__class__.__name__} and {model_params['model_t'].__class__.__name__}")
 
     if tree_explainer_available:
-        train_and_interpret(model, y_train, t_train, x_train, w_train)
+        train_and_interpret(model, y_train, t_train, x_train, w_train, feature_names=feature_names)
     else:
         model.fit(Y_train, T_train, X=X_data_train, W=W_train)
         print(f"Model with {model.__class__.__name__} scored {model.score(y_test, t_test, X=x_test, W=w_test)}")
@@ -99,7 +99,7 @@ def try_k_fold(data):
         total_model_evaluation_and_training(
             CausalForestDML, {"model_y": MLPRegressor(), "model_t": MLPClassifier(), "discrete_treatment": True,
                               "random_state": RANDOM_STATE, "cv": CV_value, "verbose": 5},
-            x_train, y_train, t_train, w_train, x_test, y_test, t_test, w_test, label_encoder,
+            x_train, y_train, t_train, w_train, x_test, y_test, t_test, w_test, label_encoder, x_train.columns,
             interval_available=True, tree_explainer_available=True, shap_available=True, score_available=True)
 
     lambda_val = lambda val: np.mean([model.effect(val) for model in model_collection])
@@ -143,7 +143,7 @@ if __name__ == "__main__":
     label_encoder = LabelEncoder()
     dataframe, X_data, Y, T, W, X_data_train, X_data_test, Y_train, Y_test, T_train, T_test, W_train, W_test = load_data(label_encoder)
     show_overview_data(dataframe)
-    try_k_fold(dataframe,)
+    try_k_fold(dataframe)
 
     total_model_evaluation_and_training(
         CausalForestDML, {"model_y": lgb.LGBMRegressor(), "model_t": lgb.LGBMClassifier(), "discrete_treatment": True, "random_state": RANDOM_STATE, "cv": CV_value, "verbose": 1},
