@@ -96,13 +96,13 @@ def try_k_fold(data):
         t_test = label_encoder.transform(t_test)
         t_train = label_encoder.transform(t_train)
 
-        total_model_evaluation_and_training(
+        model_collection.append(total_model_evaluation_and_training(
             CausalForestDML, {"model_y": MLPRegressor(), "model_t": MLPClassifier(), "discrete_treatment": True,
                               "random_state": RANDOM_STATE, "cv": CV_value, "verbose": 5},
             x_train, y_train, t_train, w_train, x_test, y_test, t_test, w_test, label_encoder, x_train.columns,
-            interval_available=True, tree_explainer_available=True, shap_available=True, score_available=True)
+            interval_available=True, tree_explainer_available=True, shap_available=True, score_available=True))
 
-    lambda_val = lambda val: np.mean([model.effect(val) for model in model_collection])
+    lambda_val = lambda val: np.mean([model.effect(val) for model in model_collection], axis=0)
     eval_x, _, _, _ = prepare_data(data, Y_col, t_col, w_cols, drop_cols)
     shap_values = run_permutation_explainer(lambda_val, eval_x , data.columns)
     ax = shap.plots.beeswarm(shap_values[Y_col]["gefitinib"], show=False)
