@@ -105,8 +105,8 @@ def try_k_fold(data):
     lambda_val = lambda val: np.mean([model.effect(val) for model in model_collection], axis=0)
     eval_x, _, _, _ = prepare_data(data, Y_col, t_col, w_cols, drop_cols)
     shap_values = run_permutation_explainer(lambda_val, eval_x , data.columns)
-    ax = shap.plots.beeswarm(shap_values[Y_col]["gefitinib"], show=False)
-    plt.title(f"{Y_col} with avg Model")
+    ax = shap.plots.beeswarm(shap_values, show=False)
+    plt.title(f"{Y_col} with avg Forest Model")
     plt.tight_layout()
     plt.show()
     print("Finished Model1 with CV")
@@ -147,25 +147,25 @@ if __name__ == "__main__":
 
     total_model_evaluation_and_training(
         CausalForestDML, {"model_y": lgb.LGBMRegressor(), "model_t": lgb.LGBMClassifier(), "discrete_treatment": True, "random_state": RANDOM_STATE, "cv": CV_value, "verbose": 1},
-        X_data_train, Y_train, T_train, W_train, X_data_test, Y_test, T_test, W_test, label_encoder,
+        X_data_train, Y_train, T_train, W_train, X_data_test, Y_test, T_test, W_test, label_encoder, X_data_train.columns,
         interval_available=True, tree_explainer_available=True, shap_available=True, score_available=True)
     print("Finished Model1")
 
     total_model_evaluation_and_training(
         LinearDML, {"model_y": lgb.LGBMRegressor(), "model_t": lgb.LGBMClassifier(), "discrete_treatment": True, "random_state": RANDOM_STATE, "cv": CV_value},
-        X_data_train, Y_train, T_train, W_train, X_data_test, Y_test, T_test, W_test, label_encoder,
+        X_data_train, Y_train, T_train, W_train, X_data_test, Y_test, T_test, W_test, label_encoder, X_data_train.columns,
         interval_available=True, tree_explainer_available=True, shap_available=True, score_available=True)
     print("Finished Model2")
 
     total_model_evaluation_and_training(
         LinearDML, {"model_y": "automl", "model_t": "automl", "discrete_treatment": True, "random_state": RANDOM_STATE, "cv": CV_value},
-        X_data_train, Y_train, T_train, W_train, X_data_test, Y_test, T_test, W_test, label_encoder,
+        X_data_train, Y_train, T_train, W_train, X_data_test, Y_test, T_test, W_test, label_encoder, X_data_train.columns,
         interval_available=True, tree_explainer_available=True, shap_available=True, score_available=True)
     print("Finished Model3")
 
     total_model_evaluation_and_training(
         CausalForestDML, {"model_y": MLPRegressor(), "model_t": MLPClassifier(), "discrete_treatment": True, "random_state": RANDOM_STATE, "cv": CV_value},
-        X_data_train, Y_train, T_train, W_train, X_data_test, Y_test, T_test, W_test, label_encoder,
+        X_data_train, Y_train, T_train, W_train, X_data_test, Y_test, T_test, W_test, label_encoder, X_data_train.columns,
         interval_available=True, tree_explainer_available=True, shap_available=True, score_available=True)
     print("Finished Model4")
 
@@ -173,20 +173,20 @@ if __name__ == "__main__":
     # No model5 because no interval
     total_model_evaluation_and_training(
         NonParamDML, {"model_y": RandomForestRegressor(), "model_t": RandomForestClassifier(), "model_final": AdaBoostRegressor(), "discrete_treatment": True, "random_state": RANDOM_STATE, "cv": CV_value},
-        X_data_train, Y_train, T_train, W_train, X_data_test, Y_test, T_test, W_test, label_encoder,
+        X_data_train, Y_train, T_train, W_train, X_data_test, Y_test, T_test, W_test, label_encoder, X_data_train.columns,
         interval_available=False, tree_explainer_available=False, shap_available=True, score_available=True)
     print("Finished Model5")
 
     #show_shap_plot(model8, X_data) takes too long, different explainer+
     total_model_evaluation_and_training(
         DMLOrthoForest, {"model_T": BernoulliNB(), "model_Y": AdaBoostRegressor(), "model_T_final": AdaBoostRegressor(), "model_Y_final": AdaBoostRegressor(), "random_state": RANDOM_STATE},
-        X_data_train, Y_train, T_train, W_train, X_data_test, Y_test, T_test, W_test, label_encoder,
+        X_data_train, Y_train, T_train, W_train, X_data_test, Y_test, T_test, W_test, label_encoder, X_data_train.columns,
         interval_available=True, tree_explainer_available=True, shap_available=False, score_available=False)
     print("Finished Model8")
 
     total_model_evaluation_and_training(
         DML, {"model_t": BernoulliNB(), "model_y": AdaBoostRegressor(), "model_final": ElasticNet(), "random_state": RANDOM_STATE, "discrete_treatment": True},
-        X_data_train, Y_train, T_train, W_train, X_data_test, Y_test, T_test, W_test, label_encoder,
+        X_data_train, Y_train, T_train, W_train, X_data_test, Y_test, T_test, W_test, label_encoder, X_data_train.columns,
         interval_available=False, tree_explainer_available=False, shap_available=True, score_available=True)
     print("Finished Model9")
 
